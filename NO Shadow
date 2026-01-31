@@ -1,0 +1,75 @@
+wait("3")
+
+local RunService = game:GetService("RunService")
+local Lighting = game:GetService("Lighting")
+local Workspace = game:GetService("Workspace")
+
+--------------------------------------------------
+-- LIGHTING SETTINGS (REMOVE DARK AREAS)
+--------------------------------------------------
+local function applyLighting()
+	Lighting.Brightness = 3
+	Lighting.ExposureCompensation = 0.5
+	Lighting.GlobalShadows = false
+	Lighting.ShadowSoftness = 0
+	Lighting.ClockTime = 14
+	Lighting.FogEnd = 1e6
+	Lighting.FogStart = 0
+	Lighting.Ambient = Color3.fromRGB(255,255,255)
+	Lighting.OutdoorAmbient = Color3.fromRGB(255,255,255)
+end
+
+--------------------------------------------------
+-- REMOVE DARK EFFECTS
+--------------------------------------------------
+local function removeEffects()
+	for _,v in ipairs(Lighting:GetChildren()) do
+		if v:IsA("BloomEffect")
+		or v:IsA("DepthOfFieldEffect")
+		or v:IsA("ColorCorrectionEffect")
+		or v:IsA("SunRaysEffect")
+		or v:IsA("BlurEffect") then
+			v.Enabled = false
+		end
+	end
+end
+
+--------------------------------------------------
+-- CLEAN TEXTURES & MATERIALS
+--------------------------------------------------
+local function cleanWorkspace()
+	for _,obj in ipairs(Workspace:GetDescendants()) do
+		
+		-- Remove texture objects
+		if obj:IsA("Texture") or obj:IsA("Decal") then
+			obj:Destroy()
+		end
+
+		-- Simplify parts (no connected texture look)
+		if obj:IsA("BasePart") then
+			obj.Material = Enum.Material.SmoothPlastic
+			obj.CastShadow = false
+			obj.Reflectance = 0
+		end
+	end
+end
+
+--------------------------------------------------
+-- INITIAL APPLY
+--------------------------------------------------
+applyLighting()
+removeEffects()
+cleanWorkspace()
+
+--------------------------------------------------
+-- LIGHT LOOP (OPTIMIZED)
+--------------------------------------------------
+local elapsed = 0
+RunService.Heartbeat:Connect(function(dt)
+	elapsed += dt
+	if elapsed >= 0.05 then
+		elapsed = 0
+		applyLighting()
+		removeEffects()
+	end
+end)
