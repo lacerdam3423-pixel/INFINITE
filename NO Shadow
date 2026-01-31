@@ -1,75 +1,67 @@
-wait("3")
+wait("0.05")
+-- LIGHT FIX / NO DARK AREAS / NO TEXTURE REMOVAL
+-- Delta Executor | Mobile Friendly
+-- Loop: 0.05s | Optimized | Safe
+-- Does NOT remove floor textures or face textures
 
-local RunService = game:GetService("RunService")
 local Lighting = game:GetService("Lighting")
-local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
 
---------------------------------------------------
--- LIGHTING SETTINGS (REMOVE DARK AREAS)
---------------------------------------------------
-local function applyLighting()
-	Lighting.Brightness = 3
-	Lighting.ExposureCompensation = 0.5
-	Lighting.GlobalShadows = false
-	Lighting.ShadowSoftness = 0
-	Lighting.ClockTime = 14
-	Lighting.FogEnd = 1e6
-	Lighting.FogStart = 0
-	Lighting.Ambient = Color3.fromRGB(255,255,255)
-	Lighting.OutdoorAmbient = Color3.fromRGB(255,255,255)
-end
-
---------------------------------------------------
--- REMOVE DARK EFFECTS
---------------------------------------------------
-local function removeEffects()
-	for _,v in ipairs(Lighting:GetChildren()) do
+-- Cache original effects so we don't spam destroy
+local function removeBadEffects()
+	for _, v in ipairs(Lighting:GetChildren()) do
 		if v:IsA("BloomEffect")
-		or v:IsA("DepthOfFieldEffect")
-		or v:IsA("ColorCorrectionEffect")
 		or v:IsA("SunRaysEffect")
-		or v:IsA("BlurEffect") then
+		or v:IsA("BlurEffect")
+		or v:IsA("DepthOfFieldEffect") then
 			v.Enabled = false
 		end
 	end
 end
 
---------------------------------------------------
--- CLEAN TEXTURES & MATERIALS
---------------------------------------------------
-local function cleanWorkspace()
-	for _,obj in ipairs(Workspace:GetDescendants()) do
-		
-		-- Remove texture objects
-		if obj:IsA("Texture") or obj:IsA("Decal") then
-			obj:Destroy()
-		end
-
-		-- Simplify parts (no connected texture look)
-		if obj:IsA("BasePart") then
-			obj.Material = Enum.Material.SmoothPlastic
-			obj.CastShadow = false
-			obj.Reflectance = 0
-		end
-	end
+-- Create ColorCorrection safely (no texture damage)
+local CC = Lighting:FindFirstChild("BrightFix_CC")
+if not CC then
+	CC = Instance.new("ColorCorrectionEffect")
+	CC.Name = "BrightFix_CC"
+	CC.Parent = Lighting
 end
 
---------------------------------------------------
--- INITIAL APPLY
---------------------------------------------------
-applyLighting()
-removeEffects()
-cleanWorkspace()
+-- Main loop (very light, no lag)
+task.spawn(function()
+	while true do
+		-- Remove darkness without killing textures
+		Lighting.Brightness = 3
+		Lighting.ExposureCompensation = 0.35
+		Lighting.Ambient = Color3.fromRGB(180, 180, 180)
+		Lighting.OutdoorAmbient = Color3.fromRGB(180, 180, 180)
+		Lighting.EnvironmentDiffuseScale = 1
+		Lighting.EnvironmentSpecularScale = 1
 
---------------------------------------------------
--- LIGHT LOOP (OPTIMIZED)
---------------------------------------------------
-local elapsed = 0
-RunService.Heartbeat:Connect(function(dt)
-	elapsed += dt
-	if elapsed >= 0.05 then
-		elapsed = 0
-		applyLighting()
-		removeEffects()
+		-- Shadows control (keeps textures visible)
+		Lighting.GlobalShadows = false
+		Lighting.ShadowSoftness = 0
+
+		-- Fog OFF (prevents dark distance)
+		Lighting.FogStart = 100000
+		Lighting.FogEnd = 1000000
+
+		-- Color correction (bright but natural)
+		CC.Enabled = true
+		CC.Brightness = 0.05
+		CC.Contrast = 0.05
+		CC.Saturation = 0.02
+		CC.TintColor = Color3.fromRGB(255, 255, 255)
+
+		removeBadEffects()
+
+		task.wait(0.05)
+	end
+end)
+
+-- Stability hook (prevents lighting reset)
+RunService.Stepped:Connect(function()
+	if Lighting.GlobalShadows ~= false then
+		Lighting.GlobalShadows = false
 	end
 end)
